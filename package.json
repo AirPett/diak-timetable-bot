@@ -18,8 +18,9 @@
   "homepage": "https://github.com/AirPett/diak-timetable-bot#readme",
   "dependencies": {
     "cron": "^1.7.2",
-    "fs": "0.0.1-security",
+    "googleapis": "^39.2.0",
     "moment": "^2.24.0",
+    "readline-sync": "^1.4.10",
     "request": "^2.88.0",
     "uuid": "^3.3.3"
   }

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const util = require('util');
 const uuid = require('uuid');
-const request = require('request');
+const requestMod = require('request');
 const moment = require('moment');
 const cron = require('cron').CronJob;
 const readline = require('readline');
@@ -16,6 +16,7 @@ const rl = readline.createInterface({
 // Promisify legacy functions
 fs.readFile = util.promisify(fs.readFile);
 fs.writeFile = util.promisify(fs.writeFile);
+request = util.promisify(requestMod);
 
 rl.question[util.promisify.custom] = (question) => {
   return new Promise((resolve) => {
@@ -39,7 +40,9 @@ const SCOPES = [
   'https://www.googleapis.com/auth/calendar.events'
 ];
 
-// File to hold config, i.e. selected Google calendar for timetable
+const DIAK_BASE_URL = 'https://lukujarjestykset.diak.fi/muodostaKori.php?1=1&g[]=';
+
+// File to hold config, e.g. selected Google calendar for timetable
 const CONFIG_FILE = 'config.json';
 let config;
 loadConfig().then(conf => {
@@ -50,17 +53,17 @@ loadConfig().then(conf => {
 
 // ============================================================================
 
-function syncTimetable() {
+async function syncTimetable() {
   console.log(getLogTime() + ' [CRON] Timetable sync initiated');
 
-  let timetableData = getTimeTableData();
-  let currentCalendarEvents = getCurrentCalendarEvents();
+  let timetableData = await getTimeTableData();
+  let currentCalendarEvents = await getCurrentCalendarEvents();
 }
 
-function getTimeTableData() {
+async function getTimeTableData() {
 }
 
-function getCurrentCalendarEvents(calendarId) {
+async function getCurrentCalendarEvents(calendarId) {
 }
 
 async function getCalendars() {
@@ -104,25 +107,27 @@ async function selectCalendar(conf) {
     }
   }
 
-  try {
-    let confData;
-    if (conf !== undefined) {
-      confData = {
-        ...conf,
-        calendarId: delectedCalendar.id
-      };
+  return delectedCalendar.id;
+}
+
+async function selectGroup() {
+  let selectedGroup;
+
+  const regex = /[A-Z][0-9]{2}[A-z]+/;
+
+  while (selectedGroup === undefined) {
+    const group = await util.promisify(rl.question)
+      (getLogTime() + ' [CONFIG] Please enter the group whose timetable you want'
+        + 'to sync (e.g. A45sh)\nNOTE! The group name is case sensitive!: ');
+    if (regex.test(group)) {
+      selectedGroup = group;
     } else {
-      confData = {
-        calendarId: delectedCalendar.id
-      };
+      console.log(getLogTime() + ' [CONFIG] That was an invalid group name!'
+        + ' Please try again!');
     }
-
-    await fs.writeFile(CONFIG_FILE, JSON.stringify(confData));
-
-    return delectedCalendar.id;
-  } catch(e) {
-    error(e);
   }
+
+  return selectedGroup;
 }
 
 async function loadConfig() {
@@ -132,14 +137,27 @@ async function loadConfig() {
     conf = JSON.parse(await fs.readFile(CONFIG_FILE));
 
     if (conf.calendarId === undefined || conf.calendarId == '') {
-      conf.calendarId = await selectCalendar(conf);
+      conf.calendarId = await selectCalendar();
+    }
+    if (conf.group === undefined || conf.group == '') {
+      conf.group = await selectGroup();
     }
   } catch(e) {
     if (e.code == 'ENOENT') {
-      conf.calendarId = await selectCalendar(undefined);
+      conf.calendarId = await selectCalendar();
+      conf.group = await selectGroup();
+    } else if (e == 'SyntaxError: Unexpected end of JSON input') {
+      conf.calendarId = await selectCalendar();
+      conf.group = await selectGroup();
     } else {
       error(e);
     }
+  }
+
+  try {
+    await fs.writeFile(CONFIG_FILE, JSON.stringify(conf));
+  } catch(e) {
+    error(e);
   }
 
   return conf;

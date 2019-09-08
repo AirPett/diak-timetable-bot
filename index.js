@@ -1,10 +1,19 @@
 const fs = require('fs');
+const util = require('util');
 const uuid = require('uuid');
 const request = require('request');
 const moment = require('moment');
 const cron = require('cron').CronJob;
-const readlineSync = require('readline-sync');
+const readline = require('readline');
 const {google} = require('googleapis');
+
+// Create reader for command line input
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+rl.question = util.promisify(rl.question);
 
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
@@ -19,9 +28,6 @@ const CREDENTIALS = loadCredentials();
 // Authorization scopes
 const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
 
-let oAuth2Client = authorize();
-console.log(oAuth2Client);
-
 // File to hold config, i.e. selected Google calendar for timetable
 const CONFIG_FILE = 'config.json';
 let config = loadConfig();
@@ -31,6 +37,8 @@ var timetableSyncTask = new cron('00 00 01 * * *', function() {
   syncTimetable();
 }, null, true, 'Europe/Helsinki');
 console.log(getLogTime() + ' [CRON] Timetable sync task started');
+
+// ============================================================================
 
 function syncTimetable() {
   let timetableData = getTimeTableData();
@@ -109,12 +117,7 @@ async function getAccessToken(oAuth2Client) {
   
   console.log(getLogTime() + ' [AUTH] Authorize this app by visiting this url: ', authUrl);
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  const code = readlineSync.question('Enter the code from that page here: ');
+  const code = await rl.question('Enter the code from that page here: ');
   const {tokens} = await oAuth2Client.getToken(code);
   oAuth2Client.setCredentials(tokens);
   fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens));

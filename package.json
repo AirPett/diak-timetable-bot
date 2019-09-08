@@ -1,5 +1,5 @@
 {
-  "name": "diak-timetable-bot",
+  "name": "diak-timetable-sync",
   "version": "1.0.0",
   "description": "Sync DIAK timetable to Google Calendar",
   "main": "index.js",
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/AirPett/diak-timetable-bot.git"
+    "url": "git+ssh://git@github.com/AirPett/diak-timetable-sync.git"
   },
   "author": "Benjamin Pettinen",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/AirPett/diak-timetable-bot/issues"
+    "url": "https://github.com/AirPett/diak-timetable-sync/issues"
   },
-  "homepage": "https://github.com/AirPett/diak-timetable-bot#readme",
+  "homepage": "https://github.com/AirPett/diak-timetable-sync#readme",
   "dependencies": {
     "cron": "^1.7.2",
     "googleapis": "^39.2.0",

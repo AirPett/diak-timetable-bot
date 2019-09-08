@@ -14,9 +14,14 @@ const rl = readline.createInterface({
 });
 
 // Promisify legacy functions
-rl.question = util.promisify(rl.question);
 fs.readFile = util.promisify(fs.readFile);
 fs.writeFile = util.promisify(fs.writeFile);
+
+rl.question[util.promisify.custom] = (question) => {
+  return new Promise((resolve) => {
+    rl.question(question, resolve);
+  });
+};
 
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
@@ -28,21 +33,26 @@ const TOKEN_FILE = 'token.json';
 const CREDENTIALS_FILE = 'credentials.json';
 
 // Authorization scopes
-const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
+// If modifying these scopes, delete token.json.
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar.events'
+];
 
 // File to hold config, i.e. selected Google calendar for timetable
 const CONFIG_FILE = 'config.json';
-let config = loadConfig();
-
-var timetableSyncTask = new cron('00 00 01 * * *', function() {
-  console.log(getLogTime() + ' [CRON] Timetable sync initiated');
+let config;
+loadConfig().then(conf => {
+  config = conf;
+  startScheduledTasks();
   syncTimetable();
-}, null, true, 'Europe/Helsinki');
-console.log(getLogTime() + ' [CRON] Timetable sync task started');
+});
 
 // ============================================================================
 
 function syncTimetable() {
+  console.log(getLogTime() + ' [CRON] Timetable sync initiated');
+
   let timetableData = getTimeTableData();
   let currentCalendarEvents = getCurrentCalendarEvents();
 }
@@ -61,30 +71,72 @@ async function getCalendars() {
     auth: oAuth2Client
   });
 
-  calendar.calendarList.list()
-    .then((result) => {
-      console.log(result);
-    }).catch((e) => {
-      error(e);
-    });
+  try {
+    return (await calendar.calendarList.list()).data.items;
+  } catch(e) {
+    error(e);
+  }
 }
 
-async function selectCalendar() {
-  const calendars = await getCalendars();
+async function selectCalendar(conf) {
+  const calendars = (await getCalendars()).filter(calendar =>
+    calendar.accessRole == 'owner');
+
+  for (const [index, calendar] of calendars.entries()) {
+    console.log('[' + (index + 1) + '] ' + ((calendar.summaryOverride !== undefined)
+      ? calendar.summaryOverride : calendar.summary));
+  }
+
+  let delectedCalendar;
+
+  while (delectedCalendar === undefined) {
+    try {
+      delectedCalendar = calendars[parseInt(await util.promisify(rl.question)
+        (getLogTime() + ' [CONFIG] Please enter the number of the calendar where '
+          + 'you want to sync the timetable: ')) - 1];
+      if (delectedCalendar === undefined) {
+        console.log(getLogTime() + ' [CONFIG] That was an invalid calendar number!'
+          + ' Please try again!');
+      }
+    } catch(e) {
+      console.log(getLogTime() + ' [CONFIG] That was an invalid calendar number!'
+        + ' Please try again!');
+    }
+  }
+
+  try {
+    let confData;
+    if (conf !== undefined) {
+      confData = {
+        ...conf,
+        calendarId: delectedCalendar.id
+      };
+    } else {
+      confData = {
+        calendarId: delectedCalendar.id
+      };
+    }
+
+    await fs.writeFile(CONFIG_FILE, JSON.stringify(confData));
+
+    return delectedCalendar.id;
+  } catch(e) {
+    error(e);
+  }
 }
 
 async function loadConfig() {
-  let conf;
+  let conf = {};
 
   try {
     conf = JSON.parse(await fs.readFile(CONFIG_FILE));
 
     if (conf.calendarId === undefined || conf.calendarId == '') {
-      conf.calendarId = await selectCalendar();
+      conf.calendarId = await selectCalendar(conf);
     }
   } catch(e) {
     if (e.code == 'ENOENT') {
-      conf.calendarId = await selectCalendar();
+      conf.calendarId = await selectCalendar(undefined);
     } else {
       error(e);
     }
@@ -123,9 +175,17 @@ async function getAccessToken(oAuth2Client) {
   
   console.log(getLogTime() + ' [AUTH] Authorize this app by visiting this url: ', authUrl);
 
-  const code = await rl.question('Enter the code from that page here: ');
-  const {tokens} = await oAuth2Client.getToken(code);
+  const code = await util.promisify(rl.question)(getLogTime() + ' [AUTH] Enter'
+    + ' the code from that page here: ');
+  let tokens;
+  try {
+    tokens = (await oAuth2Client.getToken(code)).tokens;
+  } catch(e) {
+    error(e);
+  }
+  
   oAuth2Client.setCredentials(tokens);
+  
   try {
     fs.writeFile(TOKEN_FILE, JSON.stringify(tokens));
   } catch(e) {
@@ -133,6 +193,13 @@ async function getAccessToken(oAuth2Client) {
   }
 
   return oAuth2Client;
+}
+
+function startScheduledTasks() {
+  var timetableSyncTask = new cron('00 00 01 * * *', function() {
+    syncTimetable();
+  }, null, true, 'Europe/Helsinki');
+  console.log(getLogTime() + ' [CRON] Timetable sync task started');
 }
 
 function getLogTime() {

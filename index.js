@@ -14,9 +14,14 @@ const rl = readline.createInterface({
 });
 
 // Promisify legacy functions
-rl.question = util.promisify(rl.question);
 fs.readFile = util.promisify(fs.readFile);
 fs.writeFile = util.promisify(fs.writeFile);
+
+rl.question[util.promisify.custom] = (question) => {
+  return new Promise((resolve) => {
+    rl.question(question, resolve);
+  });
+};
 
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
@@ -123,9 +128,17 @@ async function getAccessToken(oAuth2Client) {
   
   console.log(getLogTime() + ' [AUTH] Authorize this app by visiting this url: ', authUrl);
 
-  const code = await rl.question('Enter the code from that page here: ');
-  const {tokens} = await oAuth2Client.getToken(code);
+  const code = await util.promisify(rl.question)(getLogTime() + ' [AUTH] Enter'
+    + ' the code from that page here: ');
+  let tokens;
+  try {
+    tokens = (await oAuth2Client.getToken(code)).tokens;
+  } catch(e) {
+    error(e);
+  }
+  
   oAuth2Client.setCredentials(tokens);
+  
   try {
     fs.writeFile(TOKEN_FILE, JSON.stringify(tokens));
   } catch(e) {

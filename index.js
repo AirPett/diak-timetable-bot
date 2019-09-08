@@ -41,6 +41,7 @@ const SCOPES = [
 ];
 
 const DIAK_BASE_URL = 'https://lukujarjestykset.diak.fi/muodostaKori.php?1=1&g[]=';
+const DIAK_DATA_URL = 'https://lukujarjestykset.diak.fi/listData.php';
 
 // File to hold config, e.g. selected Google calendar for timetable
 const CONFIG_FILE = 'config.json';
@@ -56,11 +57,59 @@ loadConfig().then(conf => {
 async function syncTimetable() {
   console.log(getLogTime() + ' [CRON] Timetable sync initiated');
 
-  let timetableData = await getTimeTableData();
+  let timetableData = await getTimetableData();
+  console.log(timetableData);
   let currentCalendarEvents = await getCurrentCalendarEvents();
 }
 
-async function getTimeTableData() {
+async function getTimetableData() {
+  let cookieJar = request.jar();
+  
+  const options = {
+    url: DIAK_BASE_URL + config.group,
+    jar: cookieJar,
+    strictSSL: false
+  };
+  await request(options);
+
+  const options2 = {
+    url: DIAK_DATA_URL,
+    jar: cookieJar,
+    strictSSL: false
+  };
+  const timetableData = JSON.parse((await request(options2)).body).aaData;
+
+  if (timetableData.length  == 0) {
+    console.log(getLogTime() + ' [SYNC] No timetable entries to sync!');
+    return;
+  }
+
+  let timetableEntries = [];
+
+  for (const timetableRow of timetableData) {
+    const timeParts = (timetableRow[2].split('&nbsp;')[1]).split(' ');
+    const beginMoment = moment(timeParts[0] + ' ' + timeParts[2],
+      'DD.MM.YY HH:mm').format();
+    const endMoment = moment(timeParts[0] + ' ' + timeParts[4],
+      'DD.MM.YY HH:mm').format();
+
+    const timetableEntry = {
+      dateTimeStart: timetableRow[1],
+      begin: beginMoment,
+      end: endMoment,
+      title: timetableRow[3],
+      place: timetableRow[4],
+      id: timetableRow[5],
+      groups: timetableRow[6],
+      teachers: timetableRow[7],
+      additionalInfo: timetableRow[8],
+      smallGroups: timetableRow[9]
+    };
+
+    timetableEntries.push(timetableEntry);
+  }
+
+  return timetableEntries;
 }
 
 async function getCurrentCalendarEvents(calendarId) {

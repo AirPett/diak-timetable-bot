@@ -13,7 +13,10 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
+// Promisify legacy functions
 rl.question = util.promisify(rl.question);
+fs.readFile = util.promisify(fs.readFile);
+fs.writeFile = util.promisify(fs.writeFile);
 
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
@@ -23,7 +26,6 @@ const TOKEN_FILE = 'token.json';
 // File to store client secrets. Get file from 
 // https://developers.google.com/calendar/quickstart/nodejs
 const CREDENTIALS_FILE = 'credentials.json';
-const CREDENTIALS = loadCredentials();
 
 // Authorization scopes
 const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
@@ -51,10 +53,12 @@ function getTimeTableData() {
 function getCurrentCalendarEvents(calendarId) {
 }
 
-function getCalendars() {
+async function getCalendars() {
+  const oAuth2Client = await authorize();
+
   const calendar = google.calendar({
     version: 'v3',
-    auth: 'AIzaSyDoOlYwOPLV6WiUmthVLWuqpvwOYu27bOU'
+    auth: oAuth2Client
   });
 
   calendar.calendarList.list()
@@ -65,46 +69,48 @@ function getCalendars() {
     });
 }
 
-function selectCalendar() {
-  const calendars = getCalendars();
+async function selectCalendar() {
+  const calendars = await getCalendars();
 }
 
-function loadConfig() {
-  if (!fs.existsSync(CONFIG_FILE)) {
-    error(CONFIG_FILE + ' missing! Please add the required configuration '
-      + 'file and try again!');
-  } else {
-    const conf = JSON.parse(fs.readFileSync(CONFIG_FILE));
-    /*if (conf.apiKey === undefined || conf.apiKey == '') {
-      error('API key missing in configuration file! Please add your Google '
-        + 'Calendar API key to ' + confFilePath + 'and try again');
-    }*/
+async function loadConfig() {
+  let conf;
+
+  try {
+    conf = JSON.parse(await fs.readFile(CONFIG_FILE));
+
     if (conf.calendarId === undefined || conf.calendarId == '') {
-      conf.calendarId = selectCalendar();
+      conf.calendarId = await selectCalendar();
     }
-    return conf;
+  } catch(e) {
+    if (e.code == 'ENOENT') {
+      conf.calendarId = await selectCalendar();
+    } else {
+      error(e);
+    }
   }
+
+  return conf;
 }
 
-function loadCredentials() {
-  if (!fs.existsSync(CREDENTIALS_FILE)) {
-    error(CREDENTIALS_FILE + ' missing! Please add the required '
-      + 'credentials file and try again!');
-  } else {
-    return JSON.parse(fs.readFileSync(CREDENTIALS_FILE));
+async function loadCredentials() {
+  try {
+    return JSON.parse(await fs.readFile(CREDENTIALS_FILE));
+  } catch(e) {
+    error(e);
   }
 }
 
 async function authorize() {
-  const {client_secret, client_id, redirect_uris} = CREDENTIALS.installed;
+  const {client_secret, client_id, redirect_uris} = (await loadCredentials()).installed;
   const oAuth2Client = new google.auth.OAuth2(
     client_id, client_secret, redirect_uris[0]);
 
   // Check if we have previously stored a token.
-  if (fs.existsSync(TOKEN_FILE)) {
-    oAuth2Client.setCredentials(JSON.parse(fs.readFileSync(TOKEN_FILE)));
+  try {
+    oAuth2Client.setCredentials(JSON.parse(await fs.readFile(TOKEN_FILE)));
     return oAuth2Client;
-  } else {
+  } catch(e) {
     return await getAccessToken(oAuth2Client);
   }
 }
@@ -120,7 +126,11 @@ async function getAccessToken(oAuth2Client) {
   const code = await rl.question('Enter the code from that page here: ');
   const {tokens} = await oAuth2Client.getToken(code);
   oAuth2Client.setCredentials(tokens);
-  fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens));
+  try {
+    fs.writeFile(TOKEN_FILE, JSON.stringify(tokens));
+  } catch(e) {
+    error(e);
+  }
 
   return oAuth2Client;
 }
@@ -130,6 +140,6 @@ function getLogTime() {
 }
 
 function error(message) {
-  console.log(getLogTime() + ' [ERROR] ' + message);
+  console.error(getLogTime() + ' [ERROR] ' + message);
   process.exit(1);
 }

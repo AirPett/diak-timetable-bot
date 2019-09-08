@@ -41,17 +41,18 @@ const SCOPES = [
 
 // File to hold config, i.e. selected Google calendar for timetable
 const CONFIG_FILE = 'config.json';
-let config = loadConfig();
-
-var timetableSyncTask = new cron('00 00 01 * * *', function() {
-  console.log(getLogTime() + ' [CRON] Timetable sync initiated');
+let config;
+loadConfig().then(conf => {
+  config = conf;
+  startScheduledTasks();
   syncTimetable();
-}, null, true, 'Europe/Helsinki');
-console.log(getLogTime() + ' [CRON] Timetable sync task started');
+});
 
 // ============================================================================
 
 function syncTimetable() {
+  console.log(getLogTime() + ' [CRON] Timetable sync initiated');
+
   let timetableData = getTimeTableData();
   let currentCalendarEvents = getCurrentCalendarEvents();
 }
@@ -77,9 +78,51 @@ async function getCalendars() {
   }
 }
 
-async function selectCalendar() {
-  const calendars = await getCalendars();
-  console.log(calendars);
+async function selectCalendar(conf) {
+  const calendars = (await getCalendars()).filter(calendar =>
+    calendar.accessRole == 'owner');
+
+  for (const [index, calendar] of calendars.entries()) {
+    console.log('[' + (index + 1) + '] ' + ((calendar.summaryOverride !== undefined)
+      ? calendar.summaryOverride : calendar.summary));
+  }
+
+  let delectedCalendar;
+
+  while (delectedCalendar === undefined) {
+    try {
+      delectedCalendar = calendars[parseInt(await util.promisify(rl.question)
+        (getLogTime() + ' [CONFIG] Please enter the number of the calendar where '
+          + 'you want to sync the timetable: ')) - 1];
+      if (delectedCalendar === undefined) {
+        console.log(getLogTime() + ' [CONFIG] That was an invalid calendar number!'
+          + ' Please try again!');
+      }
+    } catch(e) {
+      console.log(getLogTime() + ' [CONFIG] That was an invalid calendar number!'
+        + ' Please try again!');
+    }
+  }
+
+  try {
+    let confData;
+    if (conf !== undefined) {
+      confData = {
+        ...conf,
+        calendarId: delectedCalendar.id
+      };
+    } else {
+      confData = {
+        calendarId: delectedCalendar.id
+      };
+    }
+
+    await fs.writeFile(CONFIG_FILE, JSON.stringify(confData));
+
+    return delectedCalendar.id;
+  } catch(e) {
+    error(e);
+  }
 }
 
 async function loadConfig() {
@@ -89,11 +132,11 @@ async function loadConfig() {
     conf = JSON.parse(await fs.readFile(CONFIG_FILE));
 
     if (conf.calendarId === undefined || conf.calendarId == '') {
-      conf.calendarId = await selectCalendar();
+      conf.calendarId = await selectCalendar(conf);
     }
   } catch(e) {
     if (e.code == 'ENOENT') {
-      conf.calendarId = await selectCalendar();
+      conf.calendarId = await selectCalendar(undefined);
     } else {
       error(e);
     }
@@ -150,6 +193,13 @@ async function getAccessToken(oAuth2Client) {
   }
 
   return oAuth2Client;
+}
+
+function startScheduledTasks() {
+  var timetableSyncTask = new cron('00 00 01 * * *', function() {
+    syncTimetable();
+  }, null, true, 'Europe/Helsinki');
+  console.log(getLogTime() + ' [CRON] Timetable sync task started');
 }
 
 function getLogTime() {

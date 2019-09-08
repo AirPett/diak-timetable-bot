@@ -33,7 +33,11 @@ const TOKEN_FILE = 'token.json';
 const CREDENTIALS_FILE = 'credentials.json';
 
 // Authorization scopes
-const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
+// If modifying these scopes, delete token.json.
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar.events'
+];
 
 // File to hold config, i.e. selected Google calendar for timetable
 const CONFIG_FILE = 'config.json';
@@ -66,20 +70,20 @@ async function getCalendars() {
     auth: oAuth2Client
   });
 
-  calendar.calendarList.list()
-    .then((result) => {
-      console.log(result);
-    }).catch((e) => {
-      error(e);
-    });
+  try {
+    return (await calendar.calendarList.list()).data.items;
+  } catch(e) {
+    error(e);
+  }
 }
 
 async function selectCalendar() {
   const calendars = await getCalendars();
+  console.log(calendars);
 }
 
 async function loadConfig() {
-  let conf;
+  let conf = {};
 
   try {
     conf = JSON.parse(await fs.readFile(CONFIG_FILE));

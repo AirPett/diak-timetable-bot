@@ -58,27 +58,58 @@ async function syncTimetable() {
   console.log(getLogTime() + ' [CRON] Timetable sync initiated');
 
   let timetableData = await getTimetableData();
+  console.log(timetableData);
   let currentCalendarEvents = await getCurrentCalendarEvents();
 }
 
 async function getTimetableData() {
-  let j = request.jar();
+  let cookieJar = request.jar();
   
   const options = {
     url: DIAK_BASE_URL + config.group,
-    jar: j,
+    jar: cookieJar,
     strictSSL: false
   };
   await request(options);
 
   const options2 = {
     url: DIAK_DATA_URL,
-    jar: j,
+    jar: cookieJar,
     strictSSL: false
   };
-  const timetableData = (await request(options2)).body;
+  const timetableData = JSON.parse((await request(options2)).body).aaData;
 
-  console.log(JSON.parse(timetableData));
+  if (timetableData.length  == 0) {
+    console.log(getLogTime() + ' [SYNC] No timetable entries to sync!');
+    return;
+  }
+
+  let timetableEntries = [];
+
+  for (const timetableRow of timetableData) {
+    const timeParts = (timetableRow[2].split('&nbsp;')[1]).split(' ');
+    const beginMoment = moment(timeParts[0] + ' ' + timeParts[2],
+      'DD.MM.YY HH:mm').format();
+    const endMoment = moment(timeParts[0] + ' ' + timeParts[4],
+      'DD.MM.YY HH:mm').format();
+
+    const timetableEntry = {
+      dateTimeStart: timetableRow[1],
+      begin: beginMoment,
+      end: endMoment,
+      title: timetableRow[3],
+      place: timetableRow[4],
+      id: timetableRow[5],
+      groups: timetableRow[6],
+      teachers: timetableRow[7],
+      additionalInfo: timetableRow[8],
+      smallGroups: timetableRow[9]
+    };
+
+    timetableEntries.push(timetableEntry);
+  }
+
+  return timetableEntries;
 }
 
 async function getCurrentCalendarEvents(calendarId) {

@@ -41,6 +41,7 @@ const SCOPES = [
 ];
 
 const DIAK_BASE_URL = 'https://lukujarjestykset.diak.fi/muodostaKori.php?1=1&g[]=';
+const DIAK_DATA_URL = 'https://lukujarjestykset.diak.fi/listData.php';
 
 // File to hold config, e.g. selected Google calendar for timetable
 const CONFIG_FILE = 'config.json';
@@ -56,11 +57,28 @@ loadConfig().then(conf => {
 async function syncTimetable() {
   console.log(getLogTime() + ' [CRON] Timetable sync initiated');
 
-  let timetableData = await getTimeTableData();
+  let timetableData = await getTimetableData();
   let currentCalendarEvents = await getCurrentCalendarEvents();
 }
 
-async function getTimeTableData() {
+async function getTimetableData() {
+  let j = request.jar();
+  
+  const options = {
+    url: DIAK_BASE_URL + config.group,
+    jar: j,
+    strictSSL: false
+  };
+  await request(options);
+
+  const options2 = {
+    url: DIAK_DATA_URL,
+    jar: j,
+    strictSSL: false
+  };
+  const timetableData = (await request(options2)).body;
+
+  console.log(JSON.parse(timetableData));
 }
 
 async function getCurrentCalendarEvents(calendarId) {

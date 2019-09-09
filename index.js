@@ -55,11 +55,16 @@ loadConfig().then(conf => {
 // ============================================================================
 
 async function syncTimetable() {
-  console.log(getLogTime() + ' [CRON] Timetable sync initiated');
+  console.log(getLogTime() + ' [SYNC] Timetable sync initiated!');
 
   let timetableData = await getTimetableData();
-  console.log(timetableData);
-  let currentCalendarEvents = await getCurrentCalendarEvents();
+  if (timetableData.length  == 0) {
+    console.log(getLogTime() + ' [SYNC] No timetable entries to sync!');
+    return;
+  }
+
+  let currentCalendarEvents = await getCurrentCalendarEvents(config.calendarId,
+    moment(timetableData[0].begin).startOf('day').format());
 }
 
 async function getTimetableData() {
@@ -79,12 +84,12 @@ async function getTimetableData() {
   };
   const timetableData = JSON.parse((await request(options2)).body).aaData;
 
-  if (timetableData.length  == 0) {
-    console.log(getLogTime() + ' [SYNC] No timetable entries to sync!');
-    return;
-  }
-
   let timetableEntries = [];
+
+  /*if (timetableData.length  == 0) {
+    console.log(getLogTime() + ' [SYNC] No timetable entries to sync!');
+    return timetableEntries;
+  }*/
 
   for (const timetableRow of timetableData) {
     const timeParts = (timetableRow[2].split('&nbsp;')[1]).split(' ');
@@ -98,10 +103,10 @@ async function getTimetableData() {
       begin: beginMoment,
       end: endMoment,
       title: timetableRow[3],
-      place: timetableRow[4],
+      location: timetableRow[4],
       id: timetableRow[5],
-      groups: timetableRow[6],
-      teachers: timetableRow[7],
+      groups: (timetableRow[6] != null) ? timetableRow[6] : [],
+      teachers: (timetableRow[7] != null) ? timetableRow[7] : [],
       additionalInfo: timetableRow[8],
       smallGroups: timetableRow[9]
     };
@@ -112,7 +117,25 @@ async function getTimetableData() {
   return timetableEntries;
 }
 
-async function getCurrentCalendarEvents(calendarId) {
+async function getCurrentCalendarEvents(calendarId, timeMin) {
+  const oAuth2Client = await authorize();
+
+  const calendar = google.calendar({
+    version: 'v3',
+    auth: oAuth2Client
+  });
+
+  try {
+    return (await calendar.events.list({
+      calendarId: calendarId,
+      timeMin: timeMin,
+      maxResults: 2500,
+      singleEvents: true,
+      orderBy: 'startTime'
+    })).data.items;
+  } catch(e) {
+    error(e);
+  }
 }
 
 async function getCalendars() {

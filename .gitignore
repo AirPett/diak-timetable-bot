@@ -2,4 +2,6 @@ node_modules/
 *.swp
 *.swo
 *~
-*.json
+token.json
+config.json
+credentials.json

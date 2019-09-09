@@ -55,15 +55,38 @@ loadConfig().then(conf => {
 // ============================================================================
 
 async function syncTimetable() {
-  console.log(getLogTime() + ' [SYNC] Timetable sync initiated!');
+  console.log(getLogTime() + ' [SYNC] Timetable sync initiated.');
 
   let timetableData = await getTimetableData();
   if (timetableData.length  == 0) {
-    console.log(getLogTime() + ' [SYNC] No timetable entries to sync!');
+    console.log(getLogTime() + ' [SYNC] No timetable entries to sync.');
     return;
   }
 
   let currentCalendarEvents = await getCurrentCalendarEvents(config.calendarId,
+    moment(timetableData[0].begin).startOf('day').format());
+
+  let oldEventsToRemove = [];
+
+  for (const currentCalendarEvent of currentCalendarEvents) {
+    if (!timetableData.find(event =>
+      event.begin == currentCalendarEvent.start.dateTime
+      && event.end == currentCalendarEvent.end.dateTime
+      && event.title == currentCalendarEvent.summary)) {
+
+      oldEventsToRemove.push(currentCalendarEvent);
+    }
+  }
+
+  if (oldEventsToRemove.length > 0) {
+    console.log(getLogTime() + ' [SYNC] Deleting ' + oldEventsToRemove.length
+      + ' old events that do not exist in timetable data anymore.');
+    await deleteCalendarEvents(oldEventsToRemove, config.calendarId);
+  } else {
+    console.log(getLogTime() + ' [SYNC] No old events to delete.');
+  }
+
+  currentCalendarEvents = await getCurrentCalendarEvents(config.calendarId,
     moment(timetableData[0].begin).startOf('day').format());
 
   let newEvents = [];
@@ -79,12 +102,14 @@ async function syncTimetable() {
   }
 
   if (newEvents.length > 0) {
+    console.log(getLogTime() + ' [SYNC] Creating ' + newEvents.length
+      + ' new events..');
     await addCalendarEvents(newEvents, config.calendarId);
   } else {
-    console.log(getLogTime() + ' [SYNC] No new events to create!');
+    console.log(getLogTime() + ' [SYNC] No new events to create.');
   }
 
-  console.log(getLogTime() + ' [SYNC] Timetable sync finished!');
+  console.log(getLogTime() + ' [SYNC] Timetable sync finished.');
 }
 
 async function getTimetableData() {
@@ -159,12 +184,6 @@ async function getCurrentCalendarEvents(calendarId, timeMin) {
 }
 
 async function addCalendarEvents(newEvents, calendarId) {
-  for (const newEvent of newEvents) {
-    addCalendarEvent(newEvent, calendarId);
-  }
-}
-
-async function addCalendarEvent(newEvent, calendarId) {
   const oAuth2Client = await authorize();
 
   const calendar = google.calendar({
@@ -172,18 +191,24 @@ async function addCalendarEvent(newEvent, calendarId) {
     auth: oAuth2Client
   });
 
+  for (const newEvent of newEvents) {
+    await addCalendarEvent(newEvent, calendarId, calendar);
+  }
+}
+
+async function addCalendarEvent(newEvent, calendarId, calendarConn) {
   let description = '';
   if (newEvent.teachers.length > 0) {
     description += 'Opettajat: ' + newEvent.teachers.join(', ');
   }
   if (newEvent.smallGroups != '') {
-    description += '\nPienryhmÃt: ' + newEvent.smallGroups;
+    description += '\nPienryhmÃ¤t: ' + newEvent.smallGroups;
   }
   if (newEvent.id != '') {
     description += '\nTunnus: ' + newEvent.id;
   }
   if (newEvent.additionalInfo != '') {
-    description += '\nLisÃtietoa: ' + newEvent.additionalInfo;
+    description += '\nLisÃ¤tietoa: ' + newEvent.additionalInfo;
   }
 
   try {
@@ -202,12 +227,56 @@ async function addCalendarEvent(newEvent, calendarId) {
       location: newEvent.location
     };
 
-    await calendar.events.insert({
+    await calendarConn.events.insert({
       calendarId: calendarId,
       resource: event
     });
   } catch(e) {
-    error(e);
+    if (e.errors[0].domain == 'usageLimits') {
+      console.log(getLogTime() + ' [SYNC] Rate limit exceeded! Waiting 2 seconds to try again continue.');
+      await sleep(2);
+      console.log(getLogTime() + ' [SYNC] Trying again...');
+      await addCalendarEvent(newEvent, calendarId, calendarConn);
+    } else {
+      error(e);
+    }
+  }
+}
+
+async function deleteCalendarEvents(oldEventsToDelete, calendarId) {
+  const oAuth2Client = await authorize();
+
+  const calendar = google.calendar({
+    version: 'v3',
+    auth: oAuth2Client
+  });
+
+  const eventsToDel = oldEventsToDelete.map(event => event.id);
+
+  for (const oldEventToDelete of oldEventsToDelete) {
+    await deleteCalendarEvent(oldEventToDelete, calendarId, calendar);
+  }
+}
+
+async function deleteCalendarEvent(oldEventToDelete, calendarId, calendarConn) {
+  try {
+    console.log(getLogTime() + ' [SYNC] Deleting event: '
+      + oldEventToDelete.summary + ' (' + oldEventToDelete.start.dateTime
+      +  ' - ' + oldEventToDelete.end.dateTime + ')');
+
+    await calendarConn.events.delete({
+      calendarId: calendarId,
+      eventId: oldEventToDelete.id
+    });
+  } catch(e) {
+    if (e.errors[0].domain == 'usageLimits') {
+      console.log(getLogTime() + ' [SYNC] Rate limit exceeded! Waiting 2 seconds to try again continue.');
+      await sleep(2);
+      console.log(getLogTime() + ' [SYNC] Trying again...');
+      await deleteCalendarEvent(oldEventToDelete, calendarId, calendarConn);
+    } else {
+      error(e);
+    }
   }
 }
 
@@ -367,6 +436,10 @@ function startScheduledTasks() {
 
 function getLogTime() {
   return moment().format('DD.MM.YYYY HH:mm:ss')
+}
+
+async function sleep(seconds) {
+  return new Promise(resolve => setTimeout(resolve, seconds * 1000));
 }
 
 function error(message) {

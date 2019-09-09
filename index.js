@@ -65,6 +65,26 @@ async function syncTimetable() {
 
   let currentCalendarEvents = await getCurrentCalendarEvents(config.calendarId,
     moment(timetableData[0].begin).startOf('day').format());
+
+  let newEvents = [];
+
+  for (const timetableEvent of timetableData) {
+    if (!currentCalendarEvents.find(event =>
+      event.start.dateTime == timetableEvent.begin
+      && event.end.dateTime == timetableEvent.end
+      && event.summary == timetableEvent.title)) {
+
+      newEvents.push(timetableEvent);
+    }
+  }
+
+  if (newEvents.length > 0) {
+    await addCalendarEvents(newEvents, config.calendarId);
+  } else {
+    console.log(getLogTime() + ' [SYNC] No new events to create!');
+  }
+
+  console.log(getLogTime() + ' [SYNC] Timetable sync finished!');
 }
 
 async function getTimetableData() {
@@ -133,6 +153,59 @@ async function getCurrentCalendarEvents(calendarId, timeMin) {
       singleEvents: true,
       orderBy: 'startTime'
     })).data.items;
+  } catch(e) {
+    error(e);
+  }
+}
+
+async function addCalendarEvents(newEvents, calendarId) {
+  for (const newEvent of newEvents) {
+    addCalendarEvent(newEvent, calendarId);
+  }
+}
+
+async function addCalendarEvent(newEvent, calendarId) {
+  const oAuth2Client = await authorize();
+
+  const calendar = google.calendar({
+    version: 'v3',
+    auth: oAuth2Client
+  });
+
+  let description = '';
+  if (newEvent.teachers.length > 0) {
+    description += 'Opettajat: ' + newEvent.teachers.join(', ');
+  }
+  if (newEvent.smallGroups != '') {
+    description += '\nPienryhm√t: ' + newEvent.smallGroups;
+  }
+  if (newEvent.id != '') {
+    description += '\nTunnus: ' + newEvent.id;
+  }
+  if (newEvent.additionalInfo != '') {
+    description += '\nLis√tietoa: ' + newEvent.additionalInfo;
+  }
+
+  try {
+    console.log(getLogTime() + ' [SYNC] Creating event: ' + newEvent.title
+      + ' (' + newEvent.begin +  ' - ' + newEvent.end + ')');
+
+    const event = {
+      start: {
+        dateTime: newEvent.begin
+      },
+      end: {
+        dateTime: newEvent.end
+      },
+      summary: newEvent.title,
+      description: description,
+      location: newEvent.location
+    };
+
+    await calendar.events.insert({
+      calendarId: calendarId,
+      resource: event
+    });
   } catch(e) {
     error(e);
   }

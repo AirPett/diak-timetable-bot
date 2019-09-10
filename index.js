@@ -31,7 +31,7 @@ const TOKEN_FILE = 'token.json';
 
 // File to store client secrets. Get file from 
 // https://developers.google.com/calendar/quickstart/nodejs
-const CREDENTIALS_FILE = 'credentials.json';
+const CREDENTIALS_FILE = 'credentials/credentials.json';
 
 // Authorization scopes
 // If modifying these scopes, delete token.json.

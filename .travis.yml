@@ -1,0 +1,5 @@
+deploy:
+    provider: script
+    script: bash travis_push
+    on:
+        branch: master

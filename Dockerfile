@@ -2,11 +2,11 @@ FROM node:10
 
 WORKDIR /node-app
 
-RUN sudo echo "Europe/Helsinki" > /etc/timezone
-RUN sudo dpkg-reconfigure -f noninteractive tzdata
+ENV TZ=Europe/Helsinki
 
-RUN mkdir /credentials
-RUN ln -s /credentials /node-app/credentials
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN mkdir /credentials && ln -s /credentials /node-app/credentials
 
 COPY index.js ./
 COPY package*.json ./

@@ -1,5 +1,6 @@
 language: bash
 services: docker
+script: make build
 deploy:
     provider: script
     script: bash travis_push

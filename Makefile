@@ -1,7 +1,7 @@
 REPO:=airpett/diak-timetable-sync
 TAG:=latest
 
-all: run
+all: build
 
 build:
 	docker build -t ${REPO}:${TAG} .

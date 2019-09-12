@@ -14,7 +14,7 @@ build-travis-amd64:
 
 build-travis-arm32v7:
 	wget https://github.com/multiarch/qemu-user-static/releases/download/${QEMUVER}/qemu-arm-static.tar.gz -O /tmp/qemu-$(ARCH)-static.tar.gz
-	tar zxvf /tmp/qemu-$(ARCH)-static.tar.gz -C tmQEMUVERp
+	tar zxvf /tmp/qemu-$(ARCH)-static.tar.gz -C /tmp
 	docker pull ${IMAGE_NAME}:latest-$(ARCH) || true
 	docker build --pull --cache-from ${IMAGE_NAME}:latest-$(ARCH) --file Dockerfile-$(ARCH) -t ${IMAGE_NAME} --build-arg arch=$(ARCH) .
 	docker images

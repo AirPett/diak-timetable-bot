@@ -34,4 +34,4 @@ push-dev: build-dev
 	docker login -u $(DOCKER_USERNAME)
 	docker push ${IMAGE_NAME}:dev
 
-.PHONY: build run push push-travis
+.PHONY: build build-travis build-dev run push push-travis push-dev

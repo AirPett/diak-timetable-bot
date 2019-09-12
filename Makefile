@@ -8,8 +8,10 @@ build:
 
 build-travis:
 	docker run --rm --privileged multiarch/qemu-user-static:register
+	docker run --rm -t arm32v7/alpine uname -a
 	docker pull ${IMAGE_NAME}:latest-$(ARCH) || true
 	docker build --pull --cache-from ${IMAGE_NAME}:latest-$(ARCH) -t ${IMAGE_NAME} --build-arg arch=$(ARCH) .
+	docker images
 
 build-dev:
 	docker build -t ${IMAGE_NAME}:dev-$(ARCH) --build-arg arch=$(ARCH) .

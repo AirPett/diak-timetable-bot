@@ -1,4 +1,6 @@
-FROM node:10
+ARG arch=amd64
+
+FROM ${arch}/node:10
 
 WORKDIR /node-app
 

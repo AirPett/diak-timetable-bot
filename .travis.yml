@@ -1,7 +1,11 @@
 language: bash
 services: docker
+env:
+    matrix:
+        - ARCH=amd64
+        - ARCH=arm32v7
 deploy:
     provider: script
-    script: make push-travis
+    script: ARCH=$ARCH make push-travis
     on:
         branch: master

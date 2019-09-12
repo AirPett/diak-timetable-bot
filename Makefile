@@ -13,8 +13,9 @@ build-travis-amd64:
 	docker images
 
 build-travis-arm32v7:
-	wget https://github.com/multiarch/qemu-user-static/releases/download/${QEMUVER}/qemu-arm-static.tar.gz -O /tmp/qemu-$(ARCH)-static.tar.gz
-	tar zxvf /tmp/qemu-$(ARCH)-static.tar.gz -C /tmp
+	mkdir -p tmp/qemu-$(ARCH)-static
+	wget https://github.com/multiarch/qemu-user-static/releases/download/${QEMUVER}/qemu-arm-static.tar.gz -O tmp/qemu-$(ARCH)-static.tar.gz
+	tar zxvf tmp/qemu-$(ARCH)-static.tar.gz -C tmp/qemu-$(ARCH)-static
 	docker pull ${IMAGE_NAME}:latest-$(ARCH) || true
 	docker build --pull --cache-from ${IMAGE_NAME}:latest-$(ARCH) --file Dockerfile-$(ARCH) -t ${IMAGE_NAME} --build-arg arch=$(ARCH) .
 	docker images
@@ -33,9 +34,9 @@ push: build
 	docker push ${IMAGE_NAME}:${VERSION}-$(ARCH)
 
 push-travis: build-travis-$(ARCH)
-	echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USERNAME} --password-stdin
 	docker tag ${IMAGE_NAME} ${IMAGE_NAME}:latest-$(ARCH)
 	docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${VERSION}-$(ARCH)
+	echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USERNAME} --password-stdin
 	docker push ${IMAGE_NAME}:latest-$(ARCH)
 	docker push ${IMAGE_NAME}:${VERSION}-$(ARCH)
 

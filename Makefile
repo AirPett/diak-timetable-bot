@@ -1,16 +1,22 @@
 IMAGE_NAME:=airpett/diak-timetable-sync
 VERSION:=$(shell jq .version package.json -r)
+QEMUVER:=v4.1.0-1
 
 all: run
 
 build:
 	docker build -t ${IMAGE_NAME} --build-arg arch=$(ARCH) .
 
-build-travis:
-	docker run --rm --privileged multiarch/qemu-user-static:register --reset
-	docker run -t --rm multiarch/debian-debootstrap:armhf-jessie uname -a
+build-travis-amd64:
 	docker pull ${IMAGE_NAME}:latest-$(ARCH) || true
-	docker build --pull --cache-from ${IMAGE_NAME}:latest-$(ARCH) -t ${IMAGE_NAME} --build-arg arch=$(ARCH) .
+	docker build --pull --cache-from ${IMAGE_NAME}:latest-$(ARCH) --file Dockerfile-$(ARCH) -t ${IMAGE_NAME} --build-arg arch=$(ARCH) .
+	docker images
+
+build-travis-arm32v7:
+	wget https://github.com/multiarch/qemu-user-static/releases/download/${QEMUVER}/qemu-arm-static.tar.gz -O /tmp/qemu-$(ARCH)-static.tar.gz
+	tar zxvf /tmp/qemu-$(ARCH)-static.tar.gz -C tmQEMUVERp
+	docker pull ${IMAGE_NAME}:latest-$(ARCH) || true
+	docker build --pull --cache-from ${IMAGE_NAME}:latest-$(ARCH) --file Dockerfile-$(ARCH) -t ${IMAGE_NAME} --build-arg arch=$(ARCH) .
 	docker images
 
 build-dev:
@@ -26,7 +32,7 @@ push: build
 	docker push ${IMAGE_NAME}:latest-$(ARCH)
 	docker push ${IMAGE_NAME}:${VERSION}-$(ARCH)
 
-push-travis: build-travis
+push-travis: build-travis-$(ARCH)
 	echo "${DOCKER_PASSWORD}" | docker login -u ${DOCKER_USERNAME} --password-stdin
 	docker tag ${IMAGE_NAME} ${IMAGE_NAME}:latest-$(ARCH)
 	docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${VERSION}-$(ARCH)

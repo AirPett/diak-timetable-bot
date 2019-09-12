@@ -1,6 +1,8 @@
-ARG arch=amd64
+ARG arch
 
 FROM ${arch}/node:10
+
+COPY /tmp/qemu-${arch}-static /usr/bin/
 
 WORKDIR /node-app
 

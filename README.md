@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/AirPett/diak-timetable-sync.svg?branch=master)](https://travis-ci.com/AirPett/diak-timetable-sync)
+
 # diak-timetable-sync
 Sync DIAK timetable to Google Calendar.
 

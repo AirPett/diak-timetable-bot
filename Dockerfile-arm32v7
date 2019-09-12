@@ -2,6 +2,8 @@ ARG arch
 
 FROM ${arch}/node:10
 
+ARG arch
+
 COPY /tmp/qemu-${arch}-static /usr/bin/
 
 WORKDIR /node-app

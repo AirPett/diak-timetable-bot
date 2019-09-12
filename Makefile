@@ -13,6 +13,7 @@ build-travis-amd64:
 	docker images
 
 build-travis-arm32v7:
+	docker run --rm --privileged multiarch/qemu-user-static:register --reset
 	mkdir -p tmp/qemu-$(ARCH)-static
 	wget https://github.com/multiarch/qemu-user-static/releases/download/${QEMUVER}/qemu-arm-static.tar.gz -O tmp/qemu-$(ARCH)-static.tar.gz
 	tar zxvf tmp/qemu-$(ARCH)-static.tar.gz -C tmp/qemu-$(ARCH)-static

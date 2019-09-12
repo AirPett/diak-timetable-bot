@@ -1,0 +1,7 @@
+node_modules/
+*.swp
+*.swo
+*~
+token.json
+config.json
+credentials/

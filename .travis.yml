@@ -1,7 +1,6 @@
-language: bash
 services: docker
 deploy:
     provider: script
-    script: bash travis_push
+    script: make push-travis
     on:
         branch: master

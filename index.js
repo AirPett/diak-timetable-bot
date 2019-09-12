@@ -27,11 +27,11 @@ rl.question[util.promisify.custom] = (question) => {
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first
 // time.
-const TOKEN_FILE = 'token.json';
+const TOKEN_FILE = 'config/token.json';
 
 // File to store client secrets. Get file from 
 // https://developers.google.com/calendar/quickstart/nodejs
-const CREDENTIALS_FILE = 'credentials/credentials.json';
+const CREDENTIALS_FILE = 'config/credentials.json';
 
 // Authorization scopes
 // If modifying these scopes, delete token.json.
@@ -44,7 +44,7 @@ const DIAK_BASE_URL = 'https://lukujarjestykset.diak.fi/muodostaKori.php?1=1&g[]
 const DIAK_DATA_URL = 'https://lukujarjestykset.diak.fi/listData.php';
 
 // File to hold config, e.g. selected Google calendar for timetable
-const CONFIG_FILE = 'config.json';
+const CONFIG_FILE = 'config/config.json';
 let config;
 loadConfig().then(conf => {
   config = conf;

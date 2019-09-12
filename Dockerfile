@@ -6,7 +6,7 @@ ENV TZ=Europe/Helsinki
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN mkdir /credentials && ln -s /credentials /node-app/credentials
+RUN mkdir /config && ln -s /config /node-app/config
 
 COPY index.js ./
 COPY package*.json ./

@@ -14,7 +14,7 @@ build-dev:
 	docker build -t ${IMAGE_NAME}:dev .
 
 run: build-dev
-	docker run -it --rm ${IMAGE_NAME}:dev --mount type=bind,source=$(CREDENTIAL_PATH),target=/credentials ${IMAGE_NAME}
+	docker run -it --rm --mount type=bind,source=$(CONFIG_PATH),target=/config ${IMAGE_NAME}:dev
 
 push: build
 	docker login -u $(DOCKER_USERNAME)

@@ -7,6 +7,8 @@ const cron = require('cron').CronJob;
 const readline = require('readline');
 const {google} = require('googleapis');
 
+console.log('DEBUGGING DOCKER');
+
 // Create reader for command line input
 const rl = readline.createInterface({
   input: process.stdin,

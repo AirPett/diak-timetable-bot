@@ -12,6 +12,7 @@ env:
     matrix:
         - ARCH=amd64
         - ARCH=arm32v7
+
 deploy:
     provider: script
     script: ARCH=$ARCH make push-travis

@@ -8,31 +8,15 @@ This Node.js application synchronizes your DIAK timetable to a selected Google C
 
 ## Getting started
 
-These instructions will get you a copy of the project up and running on your local machine
+These instructions will get you a copy of the project up and running in a docker container on your local machine
 
-### Installation
-
-Clone repository from Github
+### Install and start using Docker
 
 ```bash
-git clone https://github.com/AirPett/diak-timetable-sync.git
+sudo docker run -it --mount type=bind,source=,target=/config airpett/diak-timetable-sync:latest-amd64
 ```
 
-Use the package manager npm to install dependencies
-
-```bash
-npm install
-```
-
-### Usage
-
-Start diak-timetable-sync
-
-```bash
-npm start
-```
-
-On first start, it will prompt you to authorize access:
+On first start, you will be prompted to authorize access to your Google Calendar:
 
 1. Browse to the provided URL in your web browser.
 2. Click the Accept button.

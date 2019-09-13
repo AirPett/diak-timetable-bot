@@ -1,6 +1,6 @@
 # diak-timetable-sync
 
-[![Build Status](https://travis-ci.com/AirPett/diak-timetable-sync.svg?branch=master)](https://travis-ci.com/AirPett/diak-timetable-sync) [![GitHub](https://img.shields.io/github/license/airpett/diak-timetable-sync)](LICENSE)
+[![Build Status](https://travis-ci.com/AirPett/diak-timetable-sync.svg?branch=master)](https://travis-ci.com/AirPett/diak-timetable-sync) [![GitHub](https://img.shields.io/github/license/airpett/diak-timetable-sync)](LICENSE) ![GitHub last commit](https://img.shields.io/github/last-commit/airpett/diak-timetable-sync)
 
 Sync DIAK timetable to Google Calendar.
 

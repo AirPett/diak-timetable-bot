@@ -1,6 +1,7 @@
-[![Build Status](https://travis-ci.com/AirPett/diak-timetable-sync.svg?branch=master)](https://travis-ci.com/AirPett/diak-timetable-sync)
-
 # diak-timetable-sync
+
+[![Build Status](https://travis-ci.com/AirPett/diak-timetable-sync.svg?branch=master)](https://travis-ci.com/AirPett/diak-timetable-sync) ![GitHub](https://img.shields.io/github/license/airpett/diak-timetable-sync)
+
 Sync DIAK timetable to Google Calendar.
 
 This Node.js application synchronizes your DIAK timetable to a selected Google Calendar once a day. This way you can easily have your timetable available at all times without having to struggle with lukujarjestykset.diak.fi.
